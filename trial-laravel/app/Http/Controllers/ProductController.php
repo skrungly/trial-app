@@ -15,10 +15,18 @@ class ProductController extends Controller
         $filters = $request->validate([
             'manufacturer_id' => ['sometimes', 'integer', 'exists:manufacturers,id'],
             'material_id' => ['sometimes', 'integer', 'exists:materials,id'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:128'],
         ]);
 
         $products = Product::query()
             ->with(['manufacturer', 'material'])
+            ->when(isset($filters['name']), function ($query) use ($filters) {
+                // Lowercase both sides so the match ignores case on every database,
+                // and escape LIKE wildcards so the search term is matched literally.
+                $term = addcslashes(mb_strtolower($filters['name']), '\\%_');
+
+                $query->whereRaw("lower(name) like ? escape '\\'", ["%{$term}%"]);
+            })
             ->when(isset($filters['manufacturer_id']), fn ($query) => $query->where('manufacturer_id', $filters['manufacturer_id']))
             ->when(isset($filters['material_id']), fn ($query) => $query->where('material_id', $filters['material_id']))
             ->get();
