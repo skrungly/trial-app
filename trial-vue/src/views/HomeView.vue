@@ -17,12 +17,17 @@ const error = ref<string | null>(null)
 const modalOpen = ref(false)
 const editingProduct = ref<Product | null>(null)
 
+// Rows only open the edit modal while edit mode is switched on.
+const editMode = ref(false)
+
 function openCreateModal() {
   editingProduct.value = null
   modalOpen.value = true
 }
 
 function openEditModal(product: Product) {
+  if (!editMode.value) return
+
   editingProduct.value = product
   modalOpen.value = true
 }
@@ -105,8 +110,13 @@ function onProductSaved() {
   <section class="card bg-base-100 shadow-sm">
     <div class="card-body">
       <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center justify-between gap-8">
           <h1 class="card-title text-2xl">Products</h1>
+
+          <label class="label ml-auto cursor-pointer gap-2">
+            <input v-model="editMode" type="checkbox" class="toggle toggle-primary" />
+            Edit
+          </label>
 
           <button
             type="button"
@@ -190,9 +200,9 @@ function onProductSaved() {
             <tr
               v-for="product in products"
               :key="product.id"
-              class="cursor-pointer hover:bg-base-300"
-              tabindex="0"
-              :aria-label="`Edit ${product.name}`"
+              :class="{ 'cursor-pointer hover:bg-base-300': editMode }"
+              :tabindex="editMode ? 0 : undefined"
+              :aria-label="editMode ? `Edit ${product.name}` : undefined"
               @click="openEditModal(product)"
               @keydown.enter="openEditModal(product)"
             >
