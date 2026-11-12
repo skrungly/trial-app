@@ -18,6 +18,7 @@ class ProductController extends Controller
         ]);
 
         $products = Product::query()
+            ->with(['manufacturer', 'material'])
             ->when(isset($filters['manufacturer_id']), fn ($query) => $query->where('manufacturer_id', $filters['manufacturer_id']))
             ->when(isset($filters['material_id']), fn ($query) => $query->where('material_id', $filters['material_id']))
             ->get();
