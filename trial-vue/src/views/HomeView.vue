@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue'
 import { fetchManufacturers, type Manufacturer } from '@/api/manufacturers'
 import { fetchMaterials, type Material } from '@/api/materials'
 import { fetchProducts, type Product } from '@/api/products'
+import EditProductModal from '@/components/EditProductModal.vue'
 
 const products = ref<Product[]>([])
 const manufacturers = ref<Manufacturer[]>([])
@@ -11,6 +12,7 @@ const selectedManufacturerId = ref<number | null>(null)
 const selectedMaterialId = ref<number | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const editingProduct = ref<Product | null>(null)
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : 'Failed to load products'
@@ -62,6 +64,11 @@ onMounted(async () => {
 })
 
 watch([selectedManufacturerId, selectedMaterialId], loadProducts)
+
+function onProductSaved() {
+  editingProduct.value = null
+  loadProducts()
+}
 </script>
 
 <template>
@@ -122,7 +129,15 @@ watch([selectedManufacturerId, selectedMaterialId], loadProducts)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="product in products" :key="product.id">
+            <tr
+              v-for="product in products"
+              :key="product.id"
+              class="cursor-pointer hover:bg-base-300"
+              tabindex="0"
+              :aria-label="`Edit ${product.name}`"
+              @click="editingProduct = product"
+              @keydown.enter="editingProduct = product"
+            >
               <td class="font-medium">{{ product.name }}</td>
               <td>{{ product.manufacturer.name }}</td>
               <td>{{ product.material.name }}</td>
@@ -134,5 +149,13 @@ watch([selectedManufacturerId, selectedMaterialId], loadProducts)
         </table>
       </div>
     </div>
+
+    <EditProductModal
+      :product="editingProduct"
+      :manufacturers="manufacturers"
+      :materials="materials"
+      @close="editingProduct = null"
+      @saved="onProductSaved"
+    />
   </section>
 </template>
