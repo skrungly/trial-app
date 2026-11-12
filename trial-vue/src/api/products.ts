@@ -1,4 +1,4 @@
-import { getJson, patchJson } from './client'
+import { deleteJson, getJson, patchJson, postJson } from './client'
 import type { Manufacturer } from './manufacturers'
 import type { Material } from './materials'
 
@@ -46,6 +46,14 @@ export function fetchProducts(filters: ProductFilters = {}): Promise<Product[]> 
   return getJson<Product[]>(query ? `/api/products?${query}` : '/api/products')
 }
 
+export function createProduct(data: ProductInput) {
+  return postJson<Product>('/api/products', data)
+}
+
 export function updateProduct(id: number, data: Partial<ProductInput>) {
   return patchJson<Product>(`/api/products/${id}`, data)
+}
+
+export function deleteProduct(id: number) {
+  return deleteJson(`/api/products/${id}`)
 }

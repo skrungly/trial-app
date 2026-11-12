@@ -31,11 +31,24 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     )
   }
 
+  // 204 No Content has no body to parse (e.g. after a delete).
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   return response.json()
 }
 
 export function getJson<T>(path: string): Promise<T> {
   return request<T>('GET', path)
+}
+
+export function postJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>('POST', path, body)
+}
+
+export function deleteJson(path: string): Promise<void> {
+  return request<void>('DELETE', path)
 }
 
 export function patchJson<T>(path: string, body: unknown): Promise<T> {
