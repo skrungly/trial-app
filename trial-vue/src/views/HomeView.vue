@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { fetchManufacturers, type Manufacturer } from '@/api/manufacturers'
 import { fetchMaterials, type Material } from '@/api/materials'
 import { fetchProducts, type Product } from '@/api/products'
@@ -10,6 +10,8 @@ const manufacturers = ref<Manufacturer[]>([])
 const materials = ref<Material[]>([])
 const selectedManufacturerId = ref<number | null>(null)
 const selectedMaterialId = ref<number | null>(null)
+const searchInput = ref('')
+const searchTerm = ref('')
 const loading = ref(true)
 const error = ref<string | null>(null)
 const editingProduct = ref<Product | null>(null)
@@ -31,6 +33,7 @@ async function loadProducts() {
     const result = await fetchProducts({
       manufacturer_id: selectedManufacturerId.value,
       material_id: selectedMaterialId.value,
+      name: searchTerm.value || null,
     })
 
     if (request === latestRequest) products.value = result
@@ -63,7 +66,19 @@ onMounted(async () => {
   }
 })
 
-watch([selectedManufacturerId, selectedMaterialId], loadProducts)
+watch([selectedManufacturerId, selectedMaterialId, searchTerm], loadProducts)
+
+// Wait until typing pauses before searching, so the list doesn't reload on every keystroke.
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(searchInput, (value) => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    searchTerm.value = value.trim()
+  }, 300)
+})
+
+onUnmounted(() => clearTimeout(searchTimer))
 
 function onProductSaved() {
   editingProduct.value = null
@@ -74,13 +89,27 @@ function onProductSaved() {
 <template>
   <section class="card bg-base-100 shadow-sm">
     <div class="card-body">
-      <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-col gap-4">
         <h1 class="card-title text-2xl">Products</h1>
 
-        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <div class="flex w-full flex-col gap-2 md:flex-row">
+          <label class="input w-full md:w-auto md:flex-1">
+            <svg class="h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              v-model="searchInput"
+              type="search"
+              placeholder="Search by name"
+              aria-label="Search products by name"
+              maxlength="128"
+            />
+          </label>
+
           <select
             v-model.number="selectedManufacturerId"
-            class="select w-full sm:w-64"
+            class="select w-full md:w-64 md:shrink-0"
             aria-label="Filter by manufacturer"
             :disabled="manufacturers.length === 0"
           >
@@ -92,7 +121,7 @@ function onProductSaved() {
 
           <select
             v-model.number="selectedMaterialId"
-            class="select w-full sm:w-48"
+            class="select w-full md:w-48 md:shrink-0"
             aria-label="Filter by material"
             :disabled="materials.length === 0"
           >

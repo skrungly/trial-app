@@ -29,6 +29,7 @@ export interface ProductInput {
 export interface ProductFilters {
   material_id?: number | null
   manufacturer_id?: number | null
+  name?: string | null
 }
 
 export function fetchProducts(filters: ProductFilters = {}): Promise<Product[]> {
