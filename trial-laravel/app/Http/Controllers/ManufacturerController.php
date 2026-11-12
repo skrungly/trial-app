@@ -56,6 +56,12 @@ class ManufacturerController extends Controller
      */
     public function destroy(Manufacturer $manufacturer)
     {
+        if ($manufacturer->products()->exists()) {
+            return response()->json([
+                'message' => 'This manufacturer cannot be deleted because products still use it.',
+            ], 409);
+        }
+
         $manufacturer->delete();
 
         return response()->json(null, 204);

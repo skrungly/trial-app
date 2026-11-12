@@ -56,6 +56,12 @@ class MaterialController extends Controller
      */
     public function destroy(Material $material)
     {
+        if ($material->products()->exists()) {
+            return response()->json([
+                'message' => 'This material cannot be deleted because products still use it.',
+            ], 409);
+        }
+
         $material->delete();
 
         return response()->json(null, 204);
