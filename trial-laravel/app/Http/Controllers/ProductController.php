@@ -10,9 +10,19 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Product::all(), 200);
+        $filters = $request->validate([
+            'manufacturer_id' => ['sometimes', 'integer', 'exists:manufacturers,id'],
+            'material_id' => ['sometimes', 'integer', 'exists:materials,id'],
+        ]);
+
+        $products = Product::query()
+            ->when(isset($filters['manufacturer_id']), fn ($query) => $query->where('manufacturer_id', $filters['manufacturer_id']))
+            ->when(isset($filters['material_id']), fn ($query) => $query->where('material_id', $filters['material_id']))
+            ->get();
+
+        return response()->json($products, 200);
     }
 
     /**
