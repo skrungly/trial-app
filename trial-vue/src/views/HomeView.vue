@@ -3,7 +3,9 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { fetchManufacturers, type Manufacturer } from '@/api/manufacturers'
 import { fetchMaterials, type Material } from '@/api/materials'
 import { fetchProducts, type Product } from '@/api/products'
+import AddToCartModal from '@/components/AddToCartModal.vue'
 import ProductFormModal from '@/components/ProductFormModal.vue'
+import { formatGBP, toPence } from '@/utils/money'
 
 const products = ref<Product[]>([])
 const manufacturers = ref<Manufacturer[]>([])
@@ -17,7 +19,10 @@ const error = ref<string | null>(null)
 const modalOpen = ref(false)
 const editingProduct = ref<Product | null>(null)
 
-// Rows only open the edit modal while edit mode is switched on.
+const cartModalOpen = ref(false)
+const cartProduct = ref<Product | null>(null)
+
+// Clicking a row edits the product in edit mode, and adds it to the cart otherwise.
 const editMode = ref(false)
 
 function openCreateModal() {
@@ -25,11 +30,14 @@ function openCreateModal() {
   modalOpen.value = true
 }
 
-function openEditModal(product: Product) {
-  if (!editMode.value) return
-
-  editingProduct.value = product
-  modalOpen.value = true
+function onRowSelect(product: Product) {
+  if (editMode.value) {
+    editingProduct.value = product
+    modalOpen.value = true
+  } else {
+    cartProduct.value = product
+    cartModalOpen.value = true
+  }
 }
 
 function closeModal() {
@@ -200,18 +208,18 @@ function onProductSaved() {
             <tr
               v-for="product in products"
               :key="product.id"
-              :class="{ 'cursor-pointer hover:bg-base-300': editMode }"
-              :tabindex="editMode ? 0 : undefined"
-              :aria-label="editMode ? `Edit ${product.name}` : undefined"
-              @click="openEditModal(product)"
-              @keydown.enter="openEditModal(product)"
+              class="cursor-pointer hover:bg-base-300"
+              tabindex="0"
+              :aria-label="editMode ? `Edit ${product.name}` : `Add ${product.name} to cart`"
+              @click="onRowSelect(product)"
+              @keydown.enter="onRowSelect(product)"
             >
               <td class="font-medium">{{ product.name }}</td>
               <td>{{ product.manufacturer.name }}</td>
               <td>{{ product.material.name }}</td>
               <td class="capitalize">{{ product.colour }}</td>
               <td>{{ product.size }}</td>
-              <td class="text-right tabular-nums">{{ product.price }}</td>
+              <td class="text-right tabular-nums">{{ formatGBP(toPence(product.price)) }}</td>
             </tr>
           </tbody>
         </table>
@@ -226,6 +234,13 @@ function onProductSaved() {
       @close="closeModal"
       @saved="onProductSaved"
       @deleted="onProductSaved"
+    />
+
+    <AddToCartModal
+      :open="cartModalOpen"
+      :product="cartProduct"
+      @close="cartModalOpen = false"
+      @added="cartModalOpen = false"
     />
   </section>
 </template>
