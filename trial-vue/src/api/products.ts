@@ -1,6 +1,7 @@
+import { isObject } from '@/utils/guards'
 import { deleteJson, getJson, patchJson, postJson } from './client'
-import type { Manufacturer } from './manufacturers'
-import type { Material } from './materials'
+import { isManufacturer, type Manufacturer } from './manufacturers'
+import { isMaterial, type Material } from './materials'
 
 export interface Product {
   id: number
@@ -15,6 +16,23 @@ export interface Product {
   
   manufacturer: Manufacturer
   material: Material
+}
+
+export function isProduct(value: unknown): value is Product {
+  return (
+    isObject(value) &&
+    typeof value.id === 'number' &&
+    typeof value.name === 'string' &&
+    typeof value.colour === 'string' &&
+    typeof value.size === 'string' &&
+    typeof value.price === 'string' &&
+    typeof value.material_id === 'number' &&
+    typeof value.manufacturer_id === 'number' &&
+    typeof value.created_at === 'string' &&
+    typeof value.updated_at === 'string' &&
+    isManufacturer(value.manufacturer) &&
+    isMaterial(value.material)
+  )
 }
 
 export interface ProductInput {
