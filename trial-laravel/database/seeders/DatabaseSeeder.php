@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Manufacturer;
+use App\Models\Material;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -15,11 +18,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $manufacturers = Manufacturer::factory()->count(5)->create();
+        $materials = Material::factory()->count(3)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Assign each product a random existing manufacturer and material
+        // instead of letting the factory create new ones.
+        Product::factory()
+            ->count(10)
+            ->recycle($manufacturers)
+            ->recycle($materials)
+            ->create();
     }
 }
