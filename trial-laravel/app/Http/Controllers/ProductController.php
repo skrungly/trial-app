@@ -41,6 +41,7 @@ class ProductController extends Controller
         ]);
 
         $product = Product::create($validated);
+        $product->load(['manufacturer', 'material']);
 
         return response()->json($product, 201);
     }
@@ -50,6 +51,8 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
+        $product->load(['manufacturer', 'material']);
+
         return response()->json($product, 200);
     }
 
@@ -68,6 +71,7 @@ class ProductController extends Controller
         ]);
 
         $product->update($validated);
+        $product->load(['manufacturer', 'material']);
 
         return response()->json($product);
     }
