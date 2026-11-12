@@ -1,3 +1,7 @@
+import { getJson } from './client'
+import type { Manufacturer } from './manufacturers'
+import type { Material } from './materials'
+
 export interface Product {
   id: number
   name: string
@@ -8,16 +12,26 @@ export interface Product {
   manufacturer_id: number
   created_at: string
   updated_at: string
+  
+  manufacturer: Manufacturer
+  material: Material
 }
 
-export async function fetchProducts(): Promise<Product[]> {
-  const response = await fetch('/api/products', {
-    headers: { Accept: 'application/json' },
-  })
+export interface ProductFilters {
+  manufacturer_id?: number | null
+  material_id?: number | null
+}
 
-  if (!response.ok) {
-    throw new Error(`Failed to load products (${response.status})`)
+export function fetchProducts(filters: ProductFilters = {}): Promise<Product[]> {
+  const params = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value != null) {
+      params.set(key, String(value))
+    }
   }
 
-  return response.json()
+  const query = params.toString()
+
+  return getJson<Product[]>(query ? `/api/products?${query}` : '/api/products')
 }
