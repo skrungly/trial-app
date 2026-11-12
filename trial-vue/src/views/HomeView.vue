@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { fetchManufacturers, type Manufacturer } from '@/api/manufacturers'
 import { fetchMaterials, type Material } from '@/api/materials'
 import { fetchProducts, type Product } from '@/api/products'
-import EditProductModal from '@/components/EditProductModal.vue'
+import ProductFormModal from '@/components/ProductFormModal.vue'
 
 const products = ref<Product[]>([])
 const manufacturers = ref<Manufacturer[]>([])
@@ -14,7 +14,22 @@ const searchInput = ref('')
 const searchTerm = ref('')
 const loading = ref(true)
 const error = ref<string | null>(null)
+const modalOpen = ref(false)
 const editingProduct = ref<Product | null>(null)
+
+function openCreateModal() {
+  editingProduct.value = null
+  modalOpen.value = true
+}
+
+function openEditModal(product: Product) {
+  editingProduct.value = product
+  modalOpen.value = true
+}
+
+function closeModal() {
+  modalOpen.value = false
+}
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : 'Failed to load products'
@@ -81,7 +96,7 @@ watch(searchInput, (value) => {
 onUnmounted(() => clearTimeout(searchTimer))
 
 function onProductSaved() {
-  editingProduct.value = null
+  closeModal()
   loadProducts()
 }
 </script>
@@ -90,7 +105,21 @@ function onProductSaved() {
   <section class="card bg-base-100 shadow-sm">
     <div class="card-body">
       <div class="flex flex-col gap-4">
-        <h1 class="card-title text-2xl">Products</h1>
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="card-title text-2xl">Products</h1>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="manufacturers.length === 0 || materials.length === 0"
+            @click="openCreateModal"
+          >
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            New product
+          </button>
+        </div>
 
         <div class="flex w-full flex-col gap-2 md:flex-row">
           <label class="input w-full md:w-auto md:flex-1">
@@ -164,8 +193,8 @@ function onProductSaved() {
               class="cursor-pointer hover:bg-base-300"
               tabindex="0"
               :aria-label="`Edit ${product.name}`"
-              @click="editingProduct = product"
-              @keydown.enter="editingProduct = product"
+              @click="openEditModal(product)"
+              @keydown.enter="openEditModal(product)"
             >
               <td class="font-medium">{{ product.name }}</td>
               <td>{{ product.manufacturer.name }}</td>
@@ -179,12 +208,14 @@ function onProductSaved() {
       </div>
     </div>
 
-    <EditProductModal
+    <ProductFormModal
+      :open="modalOpen"
       :product="editingProduct"
       :manufacturers="manufacturers"
       :materials="materials"
-      @close="editingProduct = null"
+      @close="closeModal"
       @saved="onProductSaved"
+      @deleted="onProductSaved"
     />
   </section>
 </template>
