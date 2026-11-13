@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
 use App\Enums\UnitStatus;
+use App\Exceptions\InvalidUnitStatusChangeException;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -69,6 +71,13 @@ class Unit extends Model
         // If none is free the status change is refused. Save with updateOrFail() or saveOrFail()
         // so the claimed pigeonhole is released again if saving the unit then fails.
         static::updating(function (Unit $unit) {
+            // Every unit has to go through consolidation, so it can't jump straight to packed.
+            $from = $unit->getOriginal('status');
+
+            if ($unit->isDirty('status') && $unit->status === UnitStatus::Packed && $from !== UnitStatus::Consolidated) {
+                throw InvalidUnitStatusChangeException::mustBeConsolidatedBeforePacking($unit, $from);
+            }
+
             if ($unit->isDirty('status') && $unit->status === UnitStatus::Consolidated) {
                 // Queried rather than loaded as $unit->orderItem, so the order line and order
                 // aren't cached on the unit and don't end up in its API response.
@@ -79,9 +88,58 @@ class Unit extends Model
 
         static::updated(function (Unit $unit) {
             if ($unit->wasChanged('status') && $unit->status !== UnitStatus::Waiting) {
-                $unit->pickList?->completeIfAllPicked();
+                // Queried rather than loaded as $unit->pickList, so it isn't cached on the unit
+                // and doesn't end up in its API response.
+                $unit->pickList()->first()?->completeIfAllPicked();
+
+                $unit->startPickingOrder();
+                $unit->consolidateOrderIfAllConsolidated();
             }
         });
+    }
+
+    /**
+     * Move this unit's order to consolidated once every unit of the order has been consolidated.
+     *
+     * Units already moved on to packed count as consolidated. Orders already further along
+     * (packed or dispatched) are left as they are.
+     */
+    private function consolidateOrderIfAllConsolidated(): void
+    {
+        if (!in_array($this->status, [UnitStatus::Consolidated, UnitStatus::Packed], true)) {
+            return;
+        }
+
+        $orderId = OrderItem::whereKey($this->order_item_id)->value('order_id');
+
+        $stillToConsolidate = static::query()
+            ->whereIn('order_item_id', OrderItem::where('order_id', $orderId)->select('id'))
+            ->whereIn('status', [UnitStatus::Waiting, UnitStatus::Picked])
+            ->exists();
+
+        if ($stillToConsolidate) {
+            return;
+        }
+
+        Order::whereKey($orderId)
+            ->whereIn('status', [OrderStatus::Paid, OrderStatus::Picking])
+            ->update(['status' => OrderStatus::Consolidated]);
+    }
+
+    /**
+     * Move this unit's order from paid to picking, now one of its items has been picked.
+     *
+     * Units that skip straight past picked (to consolidated or packed) count too. Orders already
+     * further along are left as they are, so only the first unit picked changes anything.
+     */
+    private function startPickingOrder(): void
+    {
+        $orderId = OrderItem::whereKey($this->order_item_id)->value('order_id');
+
+        // Only changes it while still paid, so two units picked at once can't move it twice.
+        Order::whereKey($orderId)
+            ->where('status', OrderStatus::Paid)
+            ->update(['status' => OrderStatus::Picking]);
     }
 
     /**
