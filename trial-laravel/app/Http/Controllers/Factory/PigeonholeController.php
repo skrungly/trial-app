@@ -43,4 +43,17 @@ class PigeonholeController extends Controller
 
         return response()->json($pigeonholes, 200);
     }
+
+    /**
+     * Release the order in a full pigeonhole, freeing it for another order.
+     *
+     * A consolidated order moves on to packing. Fails with 422 if the pigeonhole is empty or
+     * its order still has units to consolidate.
+     */
+    public function release(Pigeonhole $pigeonhole)
+    {
+        $pigeonhole->release();
+
+        return response()->json($pigeonhole, 200);
+    }
 }

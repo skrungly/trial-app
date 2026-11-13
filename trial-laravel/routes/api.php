@@ -26,6 +26,7 @@ Route::prefix('factory')->name('factory.')->group(function () {
     Route::apiResource('pick-lists', PickListController::class)->only(['index', 'store']);
 
     Route::get('pigeonholes', [PigeonholeController::class, 'index'])->name('pigeonholes.index');
+    Route::post('pigeonholes/{pigeonhole}/release', [PigeonholeController::class, 'release'])->name('pigeonholes.release');
 
     // Units are created with their order, so here they can only be listed and have their status changed.
     Route::get('units', [UnitController::class, 'index'])->name('units.index');
