@@ -58,6 +58,16 @@ class Product extends Model
     }
 
     /**
+     * Get the stock records of this product across locations.
+     *
+     * @return HasMany<Stock, $this>
+     */
+    public function stock(): HasMany
+    {
+        return $this->hasMany(Stock::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

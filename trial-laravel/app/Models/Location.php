@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A place in the warehouse where stock is kept, identified by aisle, bay and shelf.
@@ -57,6 +58,16 @@ class Location extends Model
             ->where('bay', $bay)
             ->where('shelf', $shelf)
             ->first();
+    }
+
+    /**
+     * Get the stock held at this location, if any.
+     *
+     * @return HasOne<Stock, $this>
+     */
+    public function stock(): HasOne
+    {
+        return $this->hasOne(Stock::class);
     }
 
     /**
