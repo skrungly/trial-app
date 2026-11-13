@@ -1,19 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
-  fetchOperatives,
   fetchPickLists,
   generatePickList,
   updateUnitStatus,
   type Operative,
   type PickList,
 } from '@/api/factory'
+import OperativeSelect from '@/components/factory/OperativeSelect.vue'
 
-const operatives = ref<Operative[]>([])
-const operativesLoading = ref(true)
-const operativesError = ref<string | null>(null)
 // Who is picking; kept between pick lists so the same operative can carry on.
-const operativeId = ref<number | null>(null)
+const operative = ref<Operative | null>(null)
+const operativeId = computed(() => operative.value?.id ?? null)
 
 // The chosen operative's pick lists that aren't completed yet, which they can pick up again.
 const unfinished = ref<PickList[]>([])
@@ -30,7 +28,6 @@ const error = ref<string | null>(null)
 // Set when the server had nothing to put on a pick list.
 const nothingToPick = ref(false)
 
-const operative = computed(() => operatives.value.find((o) => o.id === operativeId.value) ?? null)
 const units = computed(() => pickList.value?.units ?? [])
 const unit = computed(() => units.value[current.value] ?? null)
 const finished = computed(() => pickList.value !== null && current.value >= units.value.length)
@@ -102,18 +99,6 @@ function resume(list: PickList) {
   pickList.value = list
   current.value = nextWaiting(0)
 }
-
-onMounted(async () => {
-  try {
-    operatives.value = await fetchOperatives()
-
-  } catch (e) {
-    operativesError.value = errorMessage(e, 'Failed to load operatives')
-
-  } finally {
-    operativesLoading.value = false
-  }
-})
 
 // Generating claims units for this operative, so it only happens when asked, never on page load.
 async function startPickList() {
@@ -256,27 +241,10 @@ async function markPicked() {
 
       <!-- Not started yet: choose who is picking -->
       <div v-else class="flex flex-col items-center gap-4 py-8 text-center">
-        <div v-if="operativesLoading" class="flex justify-center">
-          <span class="loading loading-spinner loading-lg"></span>
-        </div>
+        <OperativeSelect v-model="operative" placeholder="Choose who is picking" />
 
-        <div v-else-if="operativesError" role="alert" class="alert alert-error">
-          <span>{{ operativesError }}</span>
-        </div>
-
-        <p v-else-if="operatives.length === 0" class="text-base-content/60">
-          There are no operatives yet, so there's no one to pick for.
-        </p>
-
-        <template v-else>
-          <label class="w-full max-w-xs text-left">
-            <span class="mb-1 block text-sm font-medium">Operative</span>
-            <select v-model="operativeId" class="select w-full">
-              <option :value="null" disabled>Choose who is picking</option>
-              <option v-for="o in operatives" :key="o.id" :value="o.id">{{ o.name }}</option>
-            </select>
-          </label>
-
+        <template v-if="operative">
+          <!-- The chosen operative's unfinished pick lists, to resume -->
           <div v-if="unfinishedLoading" class="flex justify-center">
             <span class="loading loading-spinner"></span>
           </div>
@@ -300,22 +268,22 @@ async function markPicked() {
               </span>
             </button>
           </div>
-
-          <p v-if="nothingToPick" class="text-base-content/60">There's nothing waiting to be picked right now.</p>
-          <p v-else-if="unfinished.length === 0" class="text-base-content/60">
-            Start a pick list to get the next batch of items to collect.
-          </p>
-
-          <button
-            type="button"
-            class="btn btn-primary"
-            :disabled="loading || operativeId === null"
-            @click="startPickList"
-          >
-            <span v-if="loading" class="loading loading-spinner"></span>
-            {{ nothingToPick ? 'Check again' : 'Start pick list' }}
-          </button>
         </template>
+
+        <p v-if="nothingToPick" class="text-base-content/60">There's nothing waiting to be picked right now.</p>
+        <p v-else-if="unfinished.length === 0" class="text-base-content/60">
+          Start a pick list to get the next batch of items to collect.
+        </p>
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="loading || operativeId === null"
+          @click="startPickList"
+        >
+          <span v-if="loading" class="loading loading-spinner"></span>
+          {{ nothingToPick ? 'Check again' : 'Start pick list' }}
+        </button>
       </div>
     </div>
   </section>
