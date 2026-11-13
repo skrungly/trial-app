@@ -44,6 +44,14 @@ export interface Pigeonhole {
   updated_at: string
 }
 
+// A pigeonhole as the pigeonholes list returns it, with how full it is.
+export interface PigeonholeWithFullness extends Pigeonhole {
+  // How many units the order in it has in total; 0 when it's empty.
+  units_count: number
+  // How many of those have been consolidated into it (including any since packed).
+  consolidated_units_count: number
+}
+
 // A unit as the units endpoints return it: with the pigeonhole its order is being gathered in, if any.
 export interface UnitWithPigeonhole extends Unit {
   pigeonhole: Pigeonhole | null
@@ -102,6 +110,11 @@ export function fetchOperatives(): Promise<Operative[]> {
  */
 export async function generatePickList(operativeId: number | null = null): Promise<PickList | null> {
   return (await postJson<PickList | undefined>('/api/factory/pick-lists', { operative_id: operativeId })) ?? null
+}
+
+// In aisle then shelf order.
+export function fetchPigeonholes(): Promise<PigeonholeWithFullness[]> {
+  return getJson<PigeonholeWithFullness[]>('/api/factory/pigeonholes')
 }
 
 export function updateUnitStatus(id: number, status: UnitStatus): Promise<UnitWithPigeonhole> {

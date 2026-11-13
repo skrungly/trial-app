@@ -38,6 +38,11 @@ const router = createRouter({
           name: 'factory-picking',
           component: () => import('../views/factory/PickingView.vue'),
         },
+        {
+          path: 'consolidation',
+          name: 'factory-consolidation',
+          component: () => import('../views/factory/ConsolidationView.vue'),
+        },
       ],
     },
   ],
