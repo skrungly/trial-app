@@ -190,7 +190,6 @@ async function consolidate() {
 
       <template v-else>
         <form class="flex flex-col gap-2" @submit.prevent="consolidate">
-          <label for="unit-id" class="text-sm font-medium">Unit number</label>
           <div class="join w-full">
             <input
               id="unit-id"
@@ -210,14 +209,22 @@ async function consolidate() {
           </div>
         </form>
 
-        <div v-if="error" role="alert" class="alert alert-error">
-          <span>{{ error }}</span>
-        </div>
-
-        <!-- Where the unit just consolidated goes -->
-        <div v-if="last" class="flex flex-col items-center gap-2 rounded-box bg-base-200 py-6 text-center" aria-live="polite">
-          <span v-if="last.pigeonhole" class="text-6xl font-bold">{{ last.pigeonhole.code }}</span>
-          <span v-else class="text-lg font-semibold">No pigeonhole assigned</span>
+        <!--
+          The result of the last scan: where the unit goes, or why it couldn't be consolidated.
+          Always shown, at a fixed minimum height fitting the large pigeonhole code, so switching
+          between a code, an error and the prompt never shifts the pigeonholes below.
+        -->
+        <div
+          class="flex min-h-28 flex-col items-center justify-center gap-2 rounded-box px-4 py-6 text-center"
+          :class="error ? 'bg-error/10 text-error' : 'bg-base-200'"
+          aria-live="polite"
+        >
+          <span v-if="error" role="alert" class="text-lg font-semibold">{{ error }}</span>
+          <template v-else-if="last">
+            <span v-if="last.pigeonhole" class="text-6xl font-bold">{{ last.pigeonhole.code }}</span>
+            <span v-else class="text-lg font-semibold">No pigeonhole assigned</span>
+          </template>
+          <span v-else class="text-base-content/60">Scan a unit to see which pigeonhole it goes in.</span>
         </div>
 
         <!-- Every pigeonhole and how full it is -->
@@ -231,26 +238,36 @@ async function consolidate() {
             </div>
           </div>
 
-          <p class="mb-2 text-xs text-base-content/60">Select a full pigeonhole to release its order for packing.</p>
-
           <div v-if="pigeonholesError" role="alert" class="alert alert-warning mb-2 text-sm">
             <span>{{ pigeonholesError }} The list below may be out of date.</span>
           </div>
 
-          <!-- Confirm releasing the selected pigeonhole's order -->
-          <div v-if="confirmingRelease" role="alert" class="alert mb-2 flex flex-wrap items-center gap-2">
-            <span class="flex-1">
-              Release order #{{ confirmingRelease.order_id }} from pigeonhole
-              <span class="font-bold">{{ confirmingRelease.code }}</span>? The pigeonhole will be emptied and the order moved to packing.
+          <!--
+            Releasing: a hint until a full pigeonhole is selected, then the confirmation in the
+            same card. The hint is given the small buttons' height (2rem), so both states are the
+            same height whatever the card's padding and border, and switching doesn't shift the grid.
+          -->
+          <div class="alert my-4 flex items-center gap-2" aria-live="polite">
+            <template v-if="confirmingRelease">
+              <span class="min-w-0 flex-1" :class="{ 'text-error': releaseError }">
+                <template v-if="releaseError">{{ releaseError }}</template>
+                <template v-else>
+                  Release order #{{ confirmingRelease.order_id }} from
+                  <span class="font-bold">{{ confirmingRelease.code }}</span>?
+                </template>
+              </span>
+              <div class="flex shrink-0 gap-2">
+                <button type="button" class="btn btn-sm btn-ghost" :disabled="releasing" @click="cancelRelease">Cancel</button>
+                <button type="button" class="btn btn-sm btn-success" :disabled="releasing" @click="confirmRelease">
+                  <span v-if="releasing" class="loading loading-spinner loading-xs"></span>
+                  Release
+                </button>
+              </div>
+            </template>
+
+            <span v-else class="flex min-h-8 items-center text-sm text-base-content/60">
+              Select a full pigeonhole to release its order for packing.
             </span>
-            <div class="flex gap-2">
-              <button type="button" class="btn btn-sm btn-ghost" :disabled="releasing" @click="cancelRelease">Cancel</button>
-              <button type="button" class="btn btn-sm btn-success" :disabled="releasing" @click="confirmRelease">
-                <span v-if="releasing" class="loading loading-spinner loading-xs"></span>
-                Release
-              </button>
-            </div>
-            <span v-if="releaseError" class="w-full text-sm text-error">{{ releaseError }}</span>
           </div>
 
           <div v-if="pigeonholesLoading" class="flex justify-center py-4">
