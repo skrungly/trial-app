@@ -19,6 +19,18 @@ const router = createRouter({
       name: 'orders',
       component: () => import('../views/OrdersView.vue'),
     },
+    // Internal pages for running the factory floor.
+    {
+      path: '/factory',
+      children: [
+        { path: '', redirect: { name: 'factory-picking' } },
+        {
+          path: 'picking',
+          name: 'factory-picking',
+          component: () => import('../views/factory/PickingView.vue'),
+        },
+      ],
+    },
   ],
 })
 
