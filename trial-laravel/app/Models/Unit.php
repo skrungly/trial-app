@@ -25,6 +25,7 @@ class Unit extends Model
         'order_item_id',
         'status',
         'location_id',
+        'pick_list_id',
     ];
 
     /**
@@ -81,6 +82,16 @@ class Unit extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Get the pick list this unit has been batched into, if any.
+     *
+     * @return BelongsTo<PickList, $this>
+     */
+    public function pickList(): BelongsTo
+    {
+        return $this->belongsTo(PickList::class);
     }
 
     /**
