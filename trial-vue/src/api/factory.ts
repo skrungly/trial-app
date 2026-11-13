@@ -50,6 +50,35 @@ export interface PickList {
   updated_at: string
 }
 
+// A pick list as the API returns it, from both the index and creating one:
+// also includes who took it and how many units it holds.
+export interface ListedPickList extends PickList {
+  operative: Operative | null
+  units_count: number
+}
+
+export interface PickListFilters {
+  completed?: boolean
+  operativeId?: number
+}
+
+// Newest first.
+export function fetchPickLists(filters: PickListFilters = {}): Promise<ListedPickList[]> {
+  const params = new URLSearchParams()
+
+  if (filters.completed !== undefined) {
+    params.set('completed', String(filters.completed))
+  }
+
+  if (filters.operativeId !== undefined) {
+    params.set('operative_id', String(filters.operativeId))
+  }
+
+  const query = params.toString()
+
+  return getJson<ListedPickList[]>(`/api/factory/pick-lists${query ? `?${query}` : ''}`)
+}
+
 // Alphabetical by name.
 export function fetchOperatives(): Promise<Operative[]> {
   return getJson<Operative[]>('/api/factory/operatives')
@@ -59,8 +88,8 @@ export function fetchOperatives(): Promise<Operative[]> {
  * Batch the oldest waiting units into a new pick list, optionally for an operative.
  * Resolves to null when there's nothing waiting to be picked.
  */
-export async function generatePickList(operativeId: number | null = null): Promise<PickList | null> {
-  return (await postJson<PickList | undefined>('/api/factory/pick-lists', { operative_id: operativeId })) ?? null
+export async function generatePickList(operativeId: number | null = null): Promise<ListedPickList | null> {
+  return (await postJson<ListedPickList | undefined>('/api/factory/pick-lists', { operative_id: operativeId })) ?? null
 }
 
 export function updateUnitStatus(id: number, status: UnitStatus): Promise<Unit> {
