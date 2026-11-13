@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   fetchOperatives,
+  fetchPickLists,
   generatePickList,
   updateUnitStatus,
+  type ListedPickList,
   type Operative,
   type PickList,
 } from '@/api/factory'
@@ -13,6 +15,11 @@ const operativesLoading = ref(true)
 const operativesError = ref<string | null>(null)
 // Who is picking; kept between pick lists so the same operative can carry on.
 const operativeId = ref<number | null>(null)
+
+// The chosen operative's pick lists that aren't completed yet, which they can pick up again.
+const unfinished = ref<ListedPickList[]>([])
+const unfinishedLoading = ref(false)
+const unfinishedError = ref<string | null>(null)
 
 const pickList = ref<PickList | null>(null)
 // Index of the unit being picked; equal to the number of units once the list is done.
@@ -28,10 +35,73 @@ const operative = computed(() => operatives.value.find((o) => o.id === operative
 const units = computed(() => pickList.value?.units ?? [])
 const unit = computed(() => units.value[current.value] ?? null)
 const finished = computed(() => pickList.value !== null && current.value >= units.value.length)
-const progress = computed(() => (units.value.length === 0 ? 0 : (current.value / units.value.length) * 100))
+const pickedCount = computed(() => units.value.filter((u) => u.status !== 'waiting').length)
+const progress = computed(() => (units.value.length === 0 ? 0 : (pickedCount.value / units.value.length) * 100))
+// Whether the current unit is the last one still waiting on this list.
+const onLastUnit = computed(() => nextWaiting(current.value + 1) === units.value.length)
+// The operative's oldest unfinished pick list other than the one on screen, to carry on with next.
+// The index lists newest first, so the oldest is last.
+const nextUnfinished = computed(() => unfinished.value.filter((list) => list.id !== pickList.value?.id).at(-1) ?? null)
 
 function errorMessage(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback
+}
+
+// Index of the first unit from `from` onwards still waiting to be picked, or the number of units if none are.
+function nextWaiting(from: number): number {
+  const index = units.value.findIndex((u, i) => i >= from && u.status === 'waiting')
+
+  return index === -1 ? units.value.length : index
+}
+
+function pickedOf(list: ListedPickList): number {
+  return list.units.filter((u) => u.status !== 'waiting').length
+}
+
+// Requests made for an operative who has since been changed are ignored.
+let unfinishedRequest = 0
+
+async function loadUnfinished() {
+  const request = ++unfinishedRequest
+  unfinished.value = []
+  unfinishedError.value = null
+
+  if (operativeId.value === null) {
+    return
+  }
+
+  unfinishedLoading.value = true
+
+  try {
+    const lists = await fetchPickLists({ completed: false, operativeId: operativeId.value })
+
+    if (request === unfinishedRequest) {
+      unfinished.value = lists
+    }
+
+  } catch (e) {
+    if (request === unfinishedRequest) {
+      unfinishedError.value = errorMessage(e, 'Failed to load unfinished pick lists')
+    }
+
+  } finally {
+    if (request === unfinishedRequest) {
+      unfinishedLoading.value = false
+    }
+  }
+}
+
+watch(operativeId, () => {
+  nothingToPick.value = false
+  loadUnfinished()
+})
+
+// Carry on from the first unit not yet picked.
+function resume(list: ListedPickList) {
+  error.value = null
+  nothingToPick.value = false
+  pickList.value = list
+  current.value = nextWaiting(0)
 }
 
 onMounted(async () => {
@@ -62,6 +132,8 @@ async function startPickList() {
     pickList.value = list
     current.value = 0
     nothingToPick.value = list === null
+    // A new list was claimed or there was nothing to claim; either way, refresh what's left to resume.
+    loadUnfinished()
 
   } catch (e) {
     error.value = errorMessage(e, 'Failed to get a pick list')
@@ -77,6 +149,7 @@ function changeOperative() {
   current.value = 0
   nothingToPick.value = false
   error.value = null
+  loadUnfinished()
 }
 
 async function markPicked() {
@@ -89,7 +162,14 @@ async function markPicked() {
 
   try {
     await updateUnitStatus(unit.value.id, 'picked')
-    current.value++
+    unit.value.status = 'picked'
+    // Skip any units already picked, e.g. on a resumed list.
+    current.value = nextWaiting(current.value + 1)
+
+    // This list is now complete, so check whether there's another one to resume.
+    if (finished.value) {
+      loadUnfinished()
+    }
 
   } catch (e) {
     // Stay on this unit so the picker can try again.
@@ -120,6 +200,7 @@ async function markPicked() {
         <div>
           <div class="mb-1 flex justify-between text-sm text-base-content/60">
             <span>Item {{ current + 1 }} of {{ units.length }}</span>
+            <span>{{ pickedCount }} picked</span>
           </div>
           <progress class="progress progress-primary w-full" :value="progress" max="100"></progress>
         </div>
@@ -135,7 +216,7 @@ async function markPicked() {
 
         <button type="button" class="btn btn-primary btn-lg" :disabled="saving" @click="markPicked">
           <span v-if="saving" class="loading loading-spinner"></span>
-          {{ current + 1 === units.length ? 'Mark as picked and finish' : 'Mark as picked' }}
+          {{ onLastUnit ? 'Mark as picked and finish' : 'Mark as picked' }}
         </button>
       </template>
 
@@ -146,8 +227,26 @@ async function markPicked() {
           All {{ units.length }} {{ units.length === 1 ? 'item has' : 'items have' }} been picked.
         </p>
         <div class="flex flex-wrap justify-center gap-2">
-          <button type="button" class="btn btn-primary" :disabled="loading" @click="startPickList">
-            <span v-if="loading" class="loading loading-spinner"></span>
+          <button
+            v-if="nextUnfinished"
+            type="button"
+            class="btn btn-primary"
+            :disabled="loading"
+            @click="resume(nextUnfinished)"
+          >
+            Resume #{{ nextUnfinished.id }}
+            <span class="font-normal opacity-70">
+              ({{ pickedOf(nextUnfinished) }} / {{ nextUnfinished.units_count }})
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn"
+            :class="nextUnfinished ? 'btn-outline' : 'btn-primary'"
+            :disabled="loading || unfinishedLoading"
+            @click="startPickList"
+          >
+            <span v-if="loading || unfinishedLoading" class="loading loading-spinner"></span>
             Start next pick list
           </button>
           <button type="button" class="btn btn-ghost" :disabled="loading" @click="changeOperative">
@@ -179,8 +278,34 @@ async function markPicked() {
             </select>
           </label>
 
+          <div v-if="unfinishedLoading" class="flex justify-center">
+            <span class="loading loading-spinner"></span>
+          </div>
+
+          <div v-else-if="unfinishedError" role="alert" class="alert alert-warning w-full max-w-xs">
+            <span>{{ unfinishedError }}</span>
+          </div>
+
+          <div v-else-if="unfinished.length > 0" class="flex w-full max-w-xs flex-col gap-2">
+            <p class="text-sm font-medium text-left">Unfinished pick lists</p>
+            <button
+              v-for="list in unfinished"
+              :key="list.id"
+              type="button"
+              class="btn btn-outline justify-between"
+              @click="resume(list)"
+            >
+              <span>Resume #{{ list.id }}</span>
+              <span class="text-sm font-normal text-base-content/60">
+                {{ pickedOf(list) }} of {{ list.units_count }} picked
+              </span>
+            </button>
+          </div>
+
           <p v-if="nothingToPick" class="text-base-content/60">There's nothing waiting to be picked right now.</p>
-          <p v-else class="text-base-content/60">Start a pick list to get the next batch of items to collect.</p>
+          <p v-else-if="unfinished.length === 0" class="text-base-content/60">
+            Start a pick list to get the next batch of items to collect.
+          </p>
 
           <button
             type="button"
