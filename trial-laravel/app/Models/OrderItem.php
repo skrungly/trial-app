@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderItem extends Model
 {
@@ -51,6 +53,31 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the physical units that make up this line.
+     *
+     * @return HasMany<Unit, $this>
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(Unit::class);
+    }
+
+    /**
+     * Create a waiting unit for each item on this line that doesn't have one yet,
+     * so the line ends up with as many units as its quantity.
+     *
+     * Units start with no location; assigning stock to them is a separate step.
+     *
+     * @return Collection<int, Unit> The units created.
+     */
+    public function createUnits(): Collection
+    {
+        $missing = max(0, $this->quantity - $this->units()->count());
+
+        return $this->units()->createMany(array_fill(0, $missing, []));
     }
 
     /**

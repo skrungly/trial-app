@@ -58,6 +58,8 @@ class OrderController extends Controller
                     'quantity' => $item['quantity'],
                 ]);
 
+                $line->createUnits();
+
                 $total = bcadd($total, $line->line_total, 2);
             }
 
