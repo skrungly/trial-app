@@ -74,6 +74,10 @@ class PickListController extends Controller
             return response()->json(null, 204);
         }
 
-        return response()->json($pickList->load($this->unitsInPickingOrder()), 201);
+        // Same shape as each pick list in the index. Refreshed first so columns the database
+        // filled in (like an empty completed_at) are included, not just those set on create.
+        $pickList->refresh()->load(['operative', ...$this->unitsInPickingOrder()])->loadCount('units');
+
+        return response()->json($pickList, 201);
     }
 }
