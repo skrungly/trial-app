@@ -22,7 +22,8 @@ class StockFactory extends Factory
         return [
             'product_id' => Product::factory(),
             'location_id' => Location::factory(),
-            'quantity' => fake()->numberBetween(0, 100),
+            // At least one, so units can always be given a factory-made location.
+            'quantity' => fake()->numberBetween(1, 100),
         ];
     }
 }

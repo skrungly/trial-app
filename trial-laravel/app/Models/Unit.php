@@ -44,26 +44,108 @@ class Unit extends Model
      */
     protected static function booted(): void
     {
-        // A unit can only be picked from a location that stocks its product.
+        // A unit's item is taken from stock as soon as it's given a location, so stock
+        // levels only count items that haven't been promised to an order yet.
+        // Save units in a transaction (as placing an order does) so the stock change
+        // and the unit are saved together.
         static::saving(function (Unit $unit) {
-            if ($unit->location_id === null || ! $unit->isDirty(['location_id', 'order_item_id'])) {
+            // A new unit with no location is given one from stock, if its product is in stock anywhere.
+            if (! $unit->exists && $unit->location_id === null) {
+                $unit->allocateFromStock();
+
                 return;
             }
 
-            $stockedProductId = Stock::query()
-                ->where('location_id', $unit->location_id)
-                ->value('product_id');
+            $unit->ensureLocationStocksProduct();
 
-            $orderedProductId = OrderItem::query()
-                ->whereKey($unit->order_item_id)
-                ->value('product_id');
-
-            if ($stockedProductId === null || $stockedProductId !== $orderedProductId) {
-                throw new InvalidArgumentException(
-                    "Location {$unit->location_id} does not stock the product of order item {$unit->order_item_id}."
-                );
+            if ($unit->isDirty('location_id')) {
+                $unit->moveStockToLocation($unit->getOriginal('location_id'), $unit->location_id);
             }
         });
+    }
+
+    /**
+     * Give this unit the first location holding its product with stock left, taking one from that stock.
+     *
+     * Leaves the unit without a location when its product is out of stock everywhere.
+     */
+    private function allocateFromStock(): void
+    {
+        $productId = OrderItem::query()->whereKey($this->order_item_id)->value('product_id');
+
+        if ($productId === null) {
+            return;
+        }
+
+        $candidates = Stock::query()
+            ->where('product_id', $productId)
+            ->where('quantity', '>', 0)
+            ->orderBy('id')
+            ->pluck('location_id');
+
+        foreach ($candidates as $locationId) {
+            // Another unit may have just taken the last item here, so fall through to the next location.
+            if (self::takeFromStock($locationId)) {
+                $this->location_id = $locationId;
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * A unit can only be at a location that stocks its order item's product.
+     *
+     * @throws InvalidArgumentException When the location stocks a different product, or nothing.
+     */
+    private function ensureLocationStocksProduct(): void
+    {
+        if ($this->location_id === null || ! $this->isDirty(['location_id', 'order_item_id'])) {
+            return;
+        }
+
+        $stockedProductId = Stock::query()
+            ->where('location_id', $this->location_id)
+            ->value('product_id');
+
+        $orderedProductId = OrderItem::query()
+            ->whereKey($this->order_item_id)
+            ->value('product_id');
+
+        if ($stockedProductId === null || $stockedProductId !== $orderedProductId) {
+            throw new InvalidArgumentException(
+                "Location {$this->location_id} does not stock the product of order item {$this->order_item_id}."
+            );
+        }
+    }
+
+    /**
+     * Take one item from the stock at the new location and return it to the stock at the old one.
+     *
+     * @throws InvalidArgumentException When the new location has no stock left.
+     */
+    private function moveStockToLocation(?int $from, ?int $to): void
+    {
+        if ($to !== null && ! self::takeFromStock($to)) {
+            throw new InvalidArgumentException("Location {$to} has no stock left for order item {$this->order_item_id}.");
+        }
+
+        if ($from !== null) {
+            Stock::query()->where('location_id', $from)->increment('quantity');
+        }
+    }
+
+    /**
+     * Take one item from the stock at a location, if it has any left.
+     *
+     * Only decrements while stock remains, so two units can't both take the last item.
+     */
+    private static function takeFromStock(int $locationId): bool
+    {
+        return Stock::query()
+            ->where('location_id', $locationId)
+            ->where('quantity', '>', 0)
+            ->decrement('quantity') > 0;
     }
 
     /**
