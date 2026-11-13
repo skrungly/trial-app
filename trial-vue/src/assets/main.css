@@ -3,3 +3,19 @@
 @plugin 'daisyui' {
   themes: light --default, dark --prefersdark;
 }
+
+/*
+ * daisyUI draws an extra outline, offset outside the border, around focused form fields.
+ * Remove it, and show focus by darkening the field's own border instead, so it's still clear
+ * which field is active when using a keyboard.
+ */
+.input:focus,
+.input:focus-within,
+.select:focus,
+.select:focus-within,
+.select:open,
+.textarea:focus,
+.textarea:focus-within {
+  outline: none;
+  border-color: var(--input-color);
+}
