@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\UnitStatus;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -82,6 +84,25 @@ class Unit extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Sort units in the order a picker walks the warehouse: by aisle, bay then shelf of their location.
+     *
+     * Units without a location come first. Location fields are compared as text,
+     * so bays and shelves need consistent zero-padding (e.g. "03", not "3") to sort correctly.
+     *
+     * @param  Builder<Unit>  $query
+     */
+    #[Scope]
+    protected function inPickingOrder(Builder $query): void
+    {
+        $query->select('units.*')
+            ->leftJoin('locations', 'locations.id', '=', 'units.location_id')
+            ->orderBy('locations.aisle')
+            ->orderBy('locations.bay')
+            ->orderBy('locations.shelf')
+            ->orderBy('units.id');
     }
 
     /**
