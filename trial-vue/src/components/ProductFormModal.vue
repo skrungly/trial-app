@@ -37,6 +37,7 @@ const form = reactive<ProductForm>({
   colour: '',
   size: '',
   price: '',
+  weight: '',
   manufacturer_id: null,
   material_id: null,
 })
@@ -56,6 +57,7 @@ watch(
       colour: product?.colour ?? '',
       size: product?.size ?? '',
       price: product?.price ?? '',
+      weight: product?.weight ?? '',
       manufacturer_id: product?.manufacturer_id ?? null,
       material_id: product?.material_id ?? null,
     })
@@ -162,7 +164,7 @@ async function remove() {
           </fieldset>
         </div>
 
-        <div class="grid gap-2 sm:grid-cols-3">
+        <div class="grid gap-2 sm:grid-cols-4">
           <fieldset class="fieldset">
             <label class="fieldset-legend" for="product-colour">Colour</label>
             <input id="product-colour" v-model="form.colour" class="input w-full" :class="{ 'input-error': errors.colour }" maxlength="64" required />
@@ -179,6 +181,12 @@ async function remove() {
             <label class="fieldset-legend" for="product-price">Price</label>
             <input id="product-price" v-model="form.price" type="number" min="0" step="0.01" class="input w-full" :class="{ 'input-error': errors.price }" required />
             <p v-if="errors.price" class="text-error">{{ errors.price[0] }}</p>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <label class="fieldset-legend" for="product-weight">Weight (g)</label>
+            <input id="product-weight" v-model="form.weight" type="number" min="0" max="1000000" step="1" class="input w-full" :class="{ 'input-error': errors.weight }" required />
+            <p v-if="errors.weight" class="text-error">{{ errors.weight[0] }}</p>
           </fieldset>
         </div>
 

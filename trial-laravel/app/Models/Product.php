@@ -22,6 +22,7 @@ class Product extends Model
         'colour',
         'size',
         'price',
+        'weight',
         'material_id',
         'manufacturer_id',
     ];
@@ -65,6 +66,7 @@ class Product extends Model
     {
         return [
             'price' => 'decimal:2',
+            'weight' => 'integer',
         ];
     }
 }

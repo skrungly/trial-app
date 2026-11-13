@@ -44,6 +44,7 @@ class ProductController extends Controller
             'colour' => ['required', 'string', 'max:64'],
             'size' => ['required', 'string', 'max:32'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2'],
+            'weight' => ['required', 'integer', 'min:0', 'max:1000000'],
             'material_id' => ['required', 'integer', 'exists:materials,id'],
             'manufacturer_id' => ['required', 'integer', 'exists:manufacturers,id'],
         ]);
@@ -74,6 +75,7 @@ class ProductController extends Controller
             'colour' => ['sometimes', 'required', 'string', 'max:64'],
             'size' => ['sometimes', 'required', 'string', 'max:32'],
             'price' => ['sometimes', 'required', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2'],
+            'weight' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
             'material_id' => ['sometimes', 'required', 'integer', 'exists:materials,id'],
             'manufacturer_id' => ['sometimes', 'required', 'integer', 'exists:manufacturers,id'],
         ]);

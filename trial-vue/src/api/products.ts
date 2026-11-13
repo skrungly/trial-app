@@ -9,6 +9,7 @@ export interface Product {
   colour: string
   size: string
   price: string
+  weight: number
   material_id: number
   manufacturer_id: number
   created_at: string
@@ -26,6 +27,7 @@ export function isProduct(value: unknown): value is Product {
     typeof value.colour === 'string' &&
     typeof value.size === 'string' &&
     typeof value.price === 'string' &&
+    typeof value.weight === 'number' &&
     typeof value.material_id === 'number' &&
     typeof value.manufacturer_id === 'number' &&
     typeof value.created_at === 'string' &&
@@ -40,6 +42,7 @@ export interface ProductInput {
   colour: string
   size: string
   price: string | number
+  weight: string | number
   material_id: number
   manufacturer_id: number
 }

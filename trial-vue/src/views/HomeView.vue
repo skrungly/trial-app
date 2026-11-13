@@ -201,6 +201,7 @@ function onProductSaved() {
               <th>Material</th>
               <th>Colour</th>
               <th>Size</th>
+              <th class="text-right">Weight</th>
               <th class="text-right">Price</th>
             </tr>
           </thead>
@@ -219,6 +220,7 @@ function onProductSaved() {
               <td>{{ product.material.name }}</td>
               <td class="capitalize">{{ product.colour }}</td>
               <td>{{ product.size }}</td>
+              <td class="text-right tabular-nums">{{ product.weight }}g</td>
               <td class="text-right tabular-nums">{{ formatGBP(toPence(product.price)) }}</td>
             </tr>
           </tbody>

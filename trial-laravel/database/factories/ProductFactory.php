@@ -24,6 +24,7 @@ class ProductFactory extends Factory
             'colour' => fake()->safeColorName(),
             'size' => fake()->randomElement(['XS', 'S', 'M', 'L', 'XL', 'XXL']),
             'price' => fake()->randomFloat(2, 1, 500),
+            'weight' => fake()->numberBetween(50, 2000),
             'material_id' => Material::factory(),
             'manufacturer_id' => Manufacturer::factory(),
         ];
