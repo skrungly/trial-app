@@ -3,18 +3,27 @@
 namespace App\Http\Controllers\Factory;
 
 use App\Http\Controllers\Controller;
+use App\Models\Operative;
 use App\Models\PickList;
+use Illuminate\Http\Request;
 
 class PickListController extends Controller
 {
     /**
      * Generate a pick list from the oldest waiting units that have a location.
      *
+     * Optionally takes the operative_id of who the pick list is for.
      * Responds with 204 and creates nothing when there are no units to pick.
      */
-    public function store()
+    public function store(Request $request)
     {
-        $pickList = PickList::createForOldestWaitingUnits();
+        $validated = $request->validate([
+            'operative_id' => ['nullable', 'integer', 'exists:operatives,id'],
+        ]);
+
+        $operative = isset($validated['operative_id']) ? Operative::find($validated['operative_id']) : null;
+
+        $pickList = PickList::createForOldestWaitingUnits($operative);
 
         if ($pickList === null) {
             return response()->json(null, 204);

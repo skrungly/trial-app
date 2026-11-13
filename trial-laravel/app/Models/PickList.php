@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UnitStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
@@ -27,19 +28,31 @@ class PickList extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'picker_name',
+        'operative_id',
         'completed_at',
     ];
+
+    /**
+     * Get the operative picking this list, if anyone has taken it.
+     *
+     * @return BelongsTo<Operative, $this>
+     */
+    public function operative(): BelongsTo
+    {
+        return $this->belongsTo(Operative::class);
+    }
 
     /**
      * Batch the oldest waiting units that aren't on a pick list yet into a new pick list.
      *
      * Only units with a location are batched, as the picker needs somewhere to collect them from.
      * Returns null, creating nothing, when no such units are waiting.
+     *
+     * @param  Operative|null  $operative  Who the pick list is for, if known.
      */
-    public static function createForOldestWaitingUnits(): ?self
+    public static function createForOldestWaitingUnits(?Operative $operative = null): ?self
     {
-        return DB::transaction(function () {
+        return DB::transaction(function () use ($operative) {
             // Locked so two pick lists being made at once can't claim the same units.
             $unitIds = Unit::query()
                 ->where('status', UnitStatus::Waiting)
@@ -55,7 +68,7 @@ class PickList extends Model
                 return null;
             }
 
-            $pickList = static::create();
+            $pickList = static::create(['operative_id' => $operative?->id]);
 
             Unit::whereKey($unitIds)->update(['pick_list_id' => $pickList->id]);
 
