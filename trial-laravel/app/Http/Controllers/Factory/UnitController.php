@@ -30,6 +30,12 @@ class UnitController extends Controller
             'status' => ['required', Rule::enum(UnitStatus::class)],
         ]);
 
+        // Re-scanning an already consolidated unit changes nothing, so the model's hooks never run;
+        // check here too, so it gets a clear refusal rather than a response with no pigeonhole.
+        if ($validated['status'] === UnitStatus::Consolidated->value) {
+            $unit->ensureOrderNotPastConsolidation();
+        }
+
         // In a transaction, so a pigeonhole claimed for the order is released if saving fails.
         $unit->updateOrFail(['status' => $validated['status']]);
 

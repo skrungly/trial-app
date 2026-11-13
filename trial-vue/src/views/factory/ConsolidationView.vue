@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ApiError } from '@/api/client'
 import {
   fetchPigeonholes,
+  releasePigeonhole,
   updateUnitStatus,
   type Operative,
   type PigeonholeWithFullness,
@@ -76,6 +77,51 @@ const aisles = computed(() => {
 
   return [...groups].map(([aisle, list]) => ({ aisle, pigeonholes: list }))
 })
+
+// A full pigeonhole the operative has clicked, waiting for them to confirm releasing its order.
+const confirmingRelease = ref<PigeonholeWithFullness | null>(null)
+const releasing = ref(false)
+const releaseError = ref<string | null>(null)
+
+function askToRelease(pigeonhole: PigeonholeWithFullness) {
+  confirmingRelease.value = pigeonhole
+  releaseError.value = null
+}
+
+function cancelRelease() {
+  confirmingRelease.value = null
+  releaseError.value = null
+  focusInput()
+}
+
+async function confirmRelease() {
+  if (!confirmingRelease.value || releasing.value) {
+    return
+  }
+
+  releasing.value = true
+  releaseError.value = null
+
+  try {
+    await releasePigeonhole(confirmingRelease.value.id)
+
+    // The big code for the last unit would otherwise point at a pigeonhole that's now empty.
+    if (last.value?.pigeonhole?.id === confirmingRelease.value.id) {
+      last.value = null
+    }
+
+    confirmingRelease.value = null
+    await loadPigeonholes()
+    focusInput()
+
+  } catch (e) {
+    // Stay on the confirmation so they can see why, e.g. a unit was un-consolidated meanwhile.
+    releaseError.value = e instanceof Error ? e.message : 'Failed to release the pigeonhole'
+
+  } finally {
+    releasing.value = false
+  }
+}
 
 function errorMessage(e: unknown, unitId: number): string {
   if (e instanceof ApiError && e.status === 404) {
@@ -185,8 +231,26 @@ async function consolidate() {
             </div>
           </div>
 
+          <p class="mb-2 text-xs text-base-content/60">Select a full pigeonhole to release its order for packing.</p>
+
           <div v-if="pigeonholesError" role="alert" class="alert alert-warning mb-2 text-sm">
             <span>{{ pigeonholesError }} The list below may be out of date.</span>
+          </div>
+
+          <!-- Confirm releasing the selected pigeonhole's order -->
+          <div v-if="confirmingRelease" role="alert" class="alert mb-2 flex flex-wrap items-center gap-2">
+            <span class="flex-1">
+              Release order #{{ confirmingRelease.order_id }} from pigeonhole
+              <span class="font-bold">{{ confirmingRelease.code }}</span>? The pigeonhole will be emptied and the order moved to packing.
+            </span>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-sm btn-ghost" :disabled="releasing" @click="cancelRelease">Cancel</button>
+              <button type="button" class="btn btn-sm btn-success" :disabled="releasing" @click="confirmRelease">
+                <span v-if="releasing" class="loading loading-spinner loading-xs"></span>
+                Release
+              </button>
+            </div>
+            <span v-if="releaseError" class="w-full text-sm text-error">{{ releaseError }}</span>
           </div>
 
           <div v-if="pigeonholesLoading" class="flex justify-center py-4">
@@ -202,17 +266,22 @@ async function consolidate() {
               </h3>
 
               <ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <li
-                  v-for="pigeonhole in group.pigeonholes"
-                  :key="pigeonhole.id"
-                  class="flex flex-col gap-1 rounded-box border p-2"
-                  :class="{
-                    'border-base-300 text-base-content/50': fullness(pigeonhole) === 'empty',
-                    'border-warning': fullness(pigeonhole) === 'filling',
-                    'border-success bg-success/10': fullness(pigeonhole) === 'full',
-                    'ring-2 ring-primary': pigeonhole.id === last?.pigeonhole?.id,
-                  }"
-                >
+                <li v-for="pigeonhole in group.pigeonholes" :key="pigeonhole.id" class="flex">
+                  <!-- Full pigeonholes are buttons, to release their order; the rest are plain tiles. -->
+                  <component
+                    :is="fullness(pigeonhole) === 'full' ? 'button' : 'div'"
+                    :type="fullness(pigeonhole) === 'full' ? 'button' : undefined"
+                    class="flex w-full flex-col gap-1 rounded-box border p-2 text-left"
+                    :class="{
+                      'border-base-300 text-base-content/50': fullness(pigeonhole) === 'empty',
+                      'border-warning': fullness(pigeonhole) === 'filling',
+                      'cursor-pointer border-success bg-success/10 hover:bg-success/20': fullness(pigeonhole) === 'full',
+                      'ring-2 ring-primary': pigeonhole.id === last?.pigeonhole?.id,
+                      'ring-2 ring-success': pigeonhole.id === confirmingRelease?.id,
+                    }"
+                    :aria-label="fullness(pigeonhole) === 'full' ? `Release order #${pigeonhole.order_id} from ${pigeonhole.code}` : undefined"
+                    @click="fullness(pigeonhole) === 'full' && askToRelease(pigeonhole)"
+                  >
                   <!-- Every tile has the same lines, so empty and filled tiles are the same height. -->
                   <span class="font-mono font-bold">{{ pigeonhole.code }}</span>
 
@@ -238,6 +307,7 @@ async function consolidate() {
                   <span class="text-xs tabular-nums" :class="{ invisible: fullness(pigeonhole) === 'empty' }">
                     {{ pigeonhole.consolidated_units_count }} / {{ pigeonhole.units_count }}
                   </span>
+                  </component>
                 </li>
               </ul>
             </section>

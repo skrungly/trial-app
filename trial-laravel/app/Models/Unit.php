@@ -79,6 +79,8 @@ class Unit extends Model
             }
 
             if ($unit->isDirty('status') && $unit->status === UnitStatus::Consolidated) {
+                $unit->ensureOrderNotPastConsolidation();
+
                 // Queried rather than loaded as $unit->orderItem, so the order line and order
                 // aren't cached on the unit and don't end up in its API response.
                 $unit->orderItem()->firstOrFail()->order->claimPigeonhole();
@@ -96,6 +98,25 @@ class Unit extends Model
                 $unit->consolidateOrderIfAllConsolidated();
             }
         });
+    }
+
+    /**
+     * Refuse consolidating this unit once its order has already been consolidated and moved on
+     * (packing, packed or dispatched). Its pigeonhole has been released by then, so consolidating
+     * again would either show no pigeonhole or claim a new one for an order that's already left.
+     *
+     * Called by the updating hook for real status changes, and by the units endpoint for re-scans
+     * of a unit that's already consolidated (which change nothing, so never reach the hook).
+     *
+     * @throws InvalidUnitStatusChangeException
+     */
+    public function ensureOrderNotPastConsolidation(): void
+    {
+        $order = Order::find(OrderItem::whereKey($this->order_item_id)->value('order_id'));
+
+        if ($order && in_array($order->status, [OrderStatus::Packing, OrderStatus::Packed, OrderStatus::Dispatched], true)) {
+            throw InvalidUnitStatusChangeException::orderAlreadyConsolidated($this, $order);
+        }
     }
 
     /**

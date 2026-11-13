@@ -117,6 +117,14 @@ export function fetchPigeonholes(): Promise<PigeonholeWithFullness[]> {
   return getJson<PigeonholeWithFullness[]>('/api/factory/pigeonholes')
 }
 
+/**
+ * Release the order in a full pigeonhole, freeing it for another order. The order stays consolidated.
+ * Fails if the pigeonhole is empty or its order still has units to consolidate.
+ */
+export function releasePigeonhole(id: number): Promise<Pigeonhole> {
+  return postJson<Pigeonhole>(`/api/factory/pigeonholes/${id}/release`, {})
+}
+
 export function updateUnitStatus(id: number, status: UnitStatus): Promise<UnitWithPigeonhole> {
   return patchJson<UnitWithPigeonhole>(`/api/factory/units/${id}`, { status })
 }

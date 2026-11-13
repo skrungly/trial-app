@@ -13,7 +13,7 @@ export interface OrderItem {
   updated_at: string
 }
 
-export const ORDER_STATUSES = ['paid', 'picking', 'consolidated', 'packed', 'dispatched'] as const
+export const ORDER_STATUSES = ['paid', 'picking', 'consolidated', 'packing', 'packed', 'dispatched'] as const
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 

@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use App\Enums\UnitStatus;
+use App\Models\Order;
 use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
@@ -14,7 +15,12 @@ class InvalidUnitStatusChangeException extends RuntimeException
 {
     public static function mustBeConsolidatedBeforePacking(Unit $unit, UnitStatus $from): self
     {
-        return new self("Unit {$unit->id} must be consolidated before it can be packed (it is {$from->value}).");
+        return new self("Unit #{$unit->id} must be consolidated before it can be packed.");
+    }
+
+    public static function orderAlreadyConsolidated(Unit $unit, Order $order): self
+    {
+        return new self("Order #{$order->id} is already consolidated.");
     }
 
     /**
