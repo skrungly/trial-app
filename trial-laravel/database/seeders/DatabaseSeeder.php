@@ -25,6 +25,13 @@ class DatabaseSeeder extends Seeder
     private const MULTI_UNIT_ORDERS = 15;
 
     /**
+     * The aisles pigeonholes are seeded on, and how many shelves each has.
+     */
+    private const PIGEONHOLE_AISLES = ['A', 'B', 'C'];
+
+    private const PIGEONHOLE_SHELVES_PER_AISLE = 8;
+
+    /**
      * Seed the application's database.
      *
      * Model events stay on so orders get their paid date and units are checked against stock.
@@ -53,7 +60,13 @@ class DatabaseSeeder extends Seeder
             ]))
             ->create();
 
-        Pigeonhole::factory()->count(12)->create();
+        // A fixed block of pigeonholes: shelves 01–10 on each of aisles A and B.
+        // Shelves are zero-padded so they sort in order as text, matching the factory's format.
+        foreach (self::PIGEONHOLE_AISLES as $aisle) {
+            foreach (range(1, self::PIGEONHOLE_SHELVES_PER_AISLE) as $shelf) {
+                Pigeonhole::create(['aisle' => $aisle, 'shelf' => sprintf('%02d', $shelf)]);
+            }
+        }
 
         Packaging::create(['name' => 'Small mailer', 'max_units' => 1, 'max_weight' => 1000]);
         Packaging::create(['name' => 'Medium box', 'max_units' => 5, 'max_weight' => 5000]);
