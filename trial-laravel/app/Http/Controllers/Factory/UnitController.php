@@ -11,11 +11,11 @@ use Illuminate\Validation\Rule;
 class UnitController extends Controller
 {
     /**
-     * List all units.
+     * List all units, each with the pigeonhole its order is in (null if none).
      */
     public function index()
     {
-        return response()->json(Unit::orderBy('id')->get(), 200);
+        return response()->json(Unit::with('pigeonhole')->orderBy('id')->get(), 200);
     }
 
     /**
@@ -31,6 +31,6 @@ class UnitController extends Controller
 
         $unit->update(['status' => $validated['status']]);
 
-        return response()->json($unit, 200);
+        return response()->json($unit->load('pigeonhole'), 200);
     }
 }

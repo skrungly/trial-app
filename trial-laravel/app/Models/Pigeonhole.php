@@ -32,6 +32,18 @@ class Pigeonhole extends Model
     ];
 
     /**
+     * The attributes that should be hidden for serialization.
+     *
+     * laravel_through_key is added by Eloquent when a pigeonhole is loaded through
+     * another model (e.g. Unit::pigeonhole) and isn't part of the pigeonhole itself.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'laravel_through_key',
+    ];
+
+    /**
      * The accessors to append to the model's array form.
      *
      * @var list<string>

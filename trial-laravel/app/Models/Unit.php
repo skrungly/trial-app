@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use InvalidArgumentException;
 
 /**
@@ -192,6 +193,25 @@ class Unit extends Model
             ->orderBy('locations.bay')
             ->orderBy('locations.shelf')
             ->orderBy('units.id');
+    }
+
+    /**
+     * Get the pigeonhole this unit's order is being gathered in, if any.
+     *
+     * Reached through the order line: the pigeonhole whose order is the line's order.
+     *
+     * @return HasOneThrough<Pigeonhole, OrderItem, $this>
+     */
+    public function pigeonhole(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Pigeonhole::class,
+            OrderItem::class,
+            'id',            // order_items.id ...
+            'order_id',      // pigeonholes.order_id ...
+            'order_item_id', // ... matches units.order_item_id
+            'order_id',      // ... matches order_items.order_id
+        );
     }
 
     /**
