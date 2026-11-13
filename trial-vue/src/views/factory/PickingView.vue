@@ -5,7 +5,6 @@ import {
   fetchPickLists,
   generatePickList,
   updateUnitStatus,
-  type ListedPickList,
   type Operative,
   type PickList,
 } from '@/api/factory'
@@ -17,7 +16,7 @@ const operativesError = ref<string | null>(null)
 const operativeId = ref<number | null>(null)
 
 // The chosen operative's pick lists that aren't completed yet, which they can pick up again.
-const unfinished = ref<ListedPickList[]>([])
+const unfinished = ref<PickList[]>([])
 const unfinishedLoading = ref(false)
 const unfinishedError = ref<string | null>(null)
 
@@ -54,7 +53,7 @@ function nextWaiting(from: number): number {
   return index === -1 ? units.value.length : index
 }
 
-function pickedOf(list: ListedPickList): number {
+function pickedOf(list: PickList): number {
   return list.units.filter((u) => u.status !== 'waiting').length
 }
 
@@ -97,7 +96,7 @@ watch(operativeId, () => {
 })
 
 // Carry on from the first unit not yet picked.
-function resume(list: ListedPickList) {
+function resume(list: PickList) {
   error.value = null
   nothingToPick.value = false
   pickList.value = list
