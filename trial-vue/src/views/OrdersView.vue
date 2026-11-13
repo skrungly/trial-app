@@ -49,7 +49,9 @@ onMounted(async () => {
         <details v-for="order in orders" :key="order.id" class="collapse collapse-arrow border border-base-300">
           <summary class="collapse-title flex flex-wrap items-center gap-x-6 gap-y-1 pr-12">
             <span class="font-bold">Order #{{ order.id }}</span>
-            <span class="text-sm text-base-content/60">{{ dateFormat.format(new Date(order.created_at)) }}</span>
+            <span class="badge badge-outline badge-sm capitalize">{{ order.status }}</span>
+            <span class="text-sm text-base-content/60">{{ order.customer_name }}</span>
+            <span class="text-sm text-base-content/60">Paid {{ dateFormat.format(new Date(order.paid_at)) }}</span>
             <span class="text-sm text-base-content/60">
               {{ itemCount(order) }} {{ itemCount(order) === 1 ? 'item' : 'items' }}
             </span>
@@ -57,6 +59,10 @@ onMounted(async () => {
           </summary>
 
           <div class="collapse-content overflow-x-auto">
+            <p v-if="order.address" class="mb-2 whitespace-pre-line text-sm">
+              <span class="font-medium">Deliver to:</span> {{ order.address }}
+            </p>
+
             <table class="table table-sm">
               <thead>
                 <tr>

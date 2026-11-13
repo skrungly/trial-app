@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -25,6 +26,8 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'customer_name' => ['required', 'string', 'max:128'],
+            'address' => ['required', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
@@ -35,7 +38,13 @@ class OrderController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            $order = Order::create(['total' => 0]);
+            // New orders always start as paid; the client cannot choose a status.
+            $order = Order::create([
+                'total' => 0,
+                'status' => OrderStatus::Paid,
+                'customer_name' => $validated['customer_name'],
+                'address' => $validated['address'],
+            ]);
             $total = '0';
 
             // Names and prices come from the database, never from the request.

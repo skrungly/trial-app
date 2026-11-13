@@ -13,16 +13,29 @@ export interface OrderItem {
   updated_at: string
 }
 
+export const ORDER_STATUSES = ['paid', 'picking', 'consolidated', 'packed', 'dispatched'] as const
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
 export interface Order {
   id: number
   total: string
+  status: OrderStatus
+  paid_at: string
+  customer_name: string
+  address: string
   items: OrderItem[]
   created_at: string
   updated_at: string
 }
 
 export interface OrderInput {
-  items: { product_id: number; quantity: number }[]
+  customer_name: string
+  address: string
+  items: {
+    product_id: number
+    quantity: number
+  }[]
 }
 
 export function placeOrder(data: OrderInput): Promise<Order> {

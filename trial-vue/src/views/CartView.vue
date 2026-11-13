@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { ApiError } from '@/api/client'
-import { placeOrder, type Order } from '@/api/orders'
+import { ApiError, type ValidationErrors } from '@/api/client'
+import { placeOrder, type Order, type OrderInput } from '@/api/orders'
 import { lineTotalPence, MAX_QUANTITY, useCart } from '@/stores/cart'
 import { formatGBP, toPence } from '@/utils/money'
 
@@ -10,9 +10,18 @@ const { items, totalPence, remove, setQuantity, clear } = useCart()
 
 const placing = ref(false)
 const orderError = ref<string | null>(null)
+const fieldErrors = ref<ValidationErrors>({})
 const placedOrder = ref<Order | null>(null)
 // The server charges current prices, which may differ from when items were added.
 const pricesChanged = ref(false)
+
+// Items come from the cart store when the order is placed, so the form only holds the customer details.
+type CustomerForm = Omit<OrderInput, 'items'>
+
+const form = reactive<CustomerForm>({
+  customer_name: '',
+  address: '',
+})
 
 // Turns "items.0.product_id" validation errors into a message naming the product.
 function describeOrderError(e: unknown): string {
@@ -33,18 +42,29 @@ function describeOrderError(e: unknown): string {
 async function submitOrder() {
   placing.value = true
   orderError.value = null
+  fieldErrors.value = {}
 
   try {
     const order = await placeOrder({
+      ...form,
       items: items.value.map((item) => ({ product_id: item.product.id, quantity: item.quantity })),
     })
 
     pricesChanged.value = toPence(order.total) !== totalPence.value
     placedOrder.value = order
+    Object.assign(form, { customer_name: '', address: '' })
     clear()
 
   } catch (e) {
-    orderError.value = describeOrderError(e)
+    if (e instanceof ApiError && e.status === 422) {
+      fieldErrors.value = e.errors
+    }
+
+    // Name and address errors show beside their fields; anything else goes in the alert.
+    const onlyFieldErrors = e instanceof ApiError && e.status === 422 &&
+      Object.keys(e.errors).every((key) => key in form)
+
+    orderError.value = onlyFieldErrors ? null : describeOrderError(e)
 
   } finally {
     placing.value = false
@@ -141,20 +161,34 @@ function onQuantityInput(productId: number, event: Event) {
           <span>{{ orderError }}</span>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-4 border-t border-base-300 pt-4">
-          <p class="text-lg">
-            Total: <span class="font-bold tabular-nums">{{ formatGBP(totalPence) }}</span>
-          </p>
+        <form class="flex flex-col gap-2 border-t border-base-300 pt-4" @submit.prevent="submitOrder">
+          <fieldset class="fieldset">
+            <label class="fieldset-legend" for="order-customer-name">Name</label>
+            <input id="order-customer-name" v-model="form.customer_name" class="input w-full" :class="{ 'input-error': fieldErrors.customer_name }" maxlength="128" autocomplete="name" required />
+            <p v-if="fieldErrors.customer_name" class="text-error">{{ fieldErrors.customer_name[0] }}</p>
+          </fieldset>
 
-          <div class="flex items-center gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" :disabled="placing" @click="clear">Clear cart</button>
+          <fieldset class="fieldset">
+            <label class="fieldset-legend" for="order-address">Address</label>
+            <textarea id="order-address" v-model="form.address" class="textarea w-full" :class="{ 'textarea-error': fieldErrors.address }" maxlength="1000" rows="3" autocomplete="street-address" required></textarea>
+            <p v-if="fieldErrors.address" class="text-error">{{ fieldErrors.address[0] }}</p>
+          </fieldset>
 
-            <button type="button" class="btn btn-primary" :disabled="placing" @click="submitOrder">
-              <span v-if="placing" class="loading loading-spinner loading-sm"></span>
-              Place order
-            </button>
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <p class="text-lg">
+              Total: <span class="font-bold tabular-nums">{{ formatGBP(totalPence) }}</span>
+            </p>
+
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn btn-ghost btn-sm" :disabled="placing" @click="clear">Clear cart</button>
+
+              <button type="submit" class="btn btn-primary" :disabled="placing">
+                <span v-if="placing" class="loading loading-spinner loading-sm"></span>
+                Place order
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       </template>
     </div>
   </section>
