@@ -20,10 +20,11 @@ class PickListController extends Controller
             return response()->json(null, 204);
         }
 
-        // List units in the order the picker reaches their locations, with each location's details.
+        // List units in the order the picker reaches their locations, with where to go and what to pick.
         return response()->json($pickList->load([
             'units' => fn ($query) => $query->inPickingOrder(),
             'units.location',
+            'units.orderItem',
         ]), 201);
     }
 }
