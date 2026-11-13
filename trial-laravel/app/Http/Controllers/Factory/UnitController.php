@@ -22,6 +22,7 @@ class UnitController extends Controller
      * Change a unit's status, e.g. to mark it as picked.
      *
      * Only the status can be changed; any other fields sent are ignored.
+     * Consolidating a unit finds its order a pigeonhole, failing with 422 if none is free.
      */
     public function update(Request $request, Unit $unit)
     {
@@ -29,7 +30,8 @@ class UnitController extends Controller
             'status' => ['required', Rule::enum(UnitStatus::class)],
         ]);
 
-        $unit->update(['status' => $validated['status']]);
+        // In a transaction, so a pigeonhole claimed for the order is released if saving fails.
+        $unit->updateOrFail(['status' => $validated['status']]);
 
         return response()->json($unit->load('pigeonhole'), 200);
     }

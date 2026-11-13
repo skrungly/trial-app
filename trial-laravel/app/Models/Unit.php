@@ -65,6 +65,18 @@ class Unit extends Model
         });
 
         // Picking the last unit on a pick list completes it.
+        // A consolidated unit is gathered with the rest of its order, so the order needs a pigeonhole.
+        // If none is free the status change is refused. Save with updateOrFail() or saveOrFail()
+        // so the claimed pigeonhole is released again if saving the unit then fails.
+        static::updating(function (Unit $unit) {
+            if ($unit->isDirty('status') && $unit->status === UnitStatus::Consolidated) {
+                // Queried rather than loaded as $unit->orderItem, so the order line and order
+                // aren't cached on the unit and don't end up in its API response.
+                $unit->orderItem()->firstOrFail()->order->claimPigeonhole();
+                $unit->unsetRelation('pigeonhole');
+            }
+        });
+
         static::updated(function (Unit $unit) {
             if ($unit->wasChanged('status') && $unit->status !== UnitStatus::Waiting) {
                 $unit->pickList?->completeIfAllPicked();
