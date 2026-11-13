@@ -15,7 +15,10 @@ class OrderController extends Controller
      */
     public function index()
     {
-        $orders = Order::with('items')->latest()->latest('id')->get();
+        $orders = Order::with('items')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get();
 
         return response()->json($orders, 200);
     }
