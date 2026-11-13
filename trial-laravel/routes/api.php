@@ -22,7 +22,7 @@ Route::apiResource('orders', OrderController::class)->only(['index', 'store', 's
 Route::prefix('factory')->name('factory.')->group(function () {
     Route::get('operatives', [OperativeController::class, 'index'])->name('operatives.index');
 
-    Route::apiResource('pick-lists', PickListController::class)->only(['store']);
+    Route::apiResource('pick-lists', PickListController::class)->only(['index', 'store']);
 
     // Units are created with their order, so here they can only be listed and have their status changed.
     Route::get('units', [UnitController::class, 'index'])->name('units.index');
