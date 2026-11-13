@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\OrderStatus;
 use App\Models\Manufacturer;
 use App\Models\Material;
+use App\Models\Operative;
 use App\Models\Order;
 use App\Models\Packaging;
 use App\Models\Pigeonhole;
@@ -57,6 +58,8 @@ class DatabaseSeeder extends Seeder
         Packaging::create(['name' => 'Small mailer', 'max_units' => 1, 'max_weight' => 1000]);
         Packaging::create(['name' => 'Medium box', 'max_units' => 5, 'max_weight' => 5000]);
         Packaging::create(['name' => 'Large box', 'max_units' => 20, 'max_weight' => 20000]);
+
+        Operative::factory()->count(5)->create();
 
         for ($i = 0; $i < self::SINGLE_UNIT_ORDERS; $i++) {
             $this->createOrder([[$products->random(), 1]]);

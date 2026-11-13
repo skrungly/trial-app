@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Factory\OperativeController;
 use App\Http\Controllers\Factory\PickListController;
 use App\Http\Controllers\Factory\UnitController;
 use App\Http\Controllers\ManufacturerController;
@@ -19,6 +20,8 @@ Route::apiResource('orders', OrderController::class)->only(['index', 'store', 's
 
 // Internal endpoints for running the factory floor.
 Route::prefix('factory')->name('factory.')->group(function () {
+    Route::get('operatives', [OperativeController::class, 'index'])->name('operatives.index');
+
     Route::apiResource('pick-lists', PickListController::class)->only(['store']);
 
     // Units are created with their order, so here they can only be listed and have their status changed.
