@@ -64,6 +64,25 @@ class PickList extends Model
     }
 
     /**
+     * Mark this pick list as completed once none of its units are still waiting to be picked.
+     *
+     * Units that have moved on past picked (consolidated or packed) count as picked too.
+     * Does nothing if the pick list is already completed.
+     */
+    public function completeIfAllPicked(): void
+    {
+        if ($this->completed_at !== null) {
+            return;
+        }
+
+        if ($this->units()->where('status', UnitStatus::Waiting)->exists()) {
+            return;
+        }
+
+        $this->update(['completed_at' => now()]);
+    }
+
+    /**
      * Get the units on this pick list.
      *
      * @return HasMany<Unit, $this>

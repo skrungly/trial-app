@@ -62,6 +62,13 @@ class Unit extends Model
                 $unit->moveStockToLocation($unit->getOriginal('location_id'), $unit->location_id);
             }
         });
+
+        // Picking the last unit on a pick list completes it.
+        static::updated(function (Unit $unit) {
+            if ($unit->wasChanged('status') && $unit->status !== UnitStatus::Waiting) {
+                $unit->pickList?->completeIfAllPicked();
+            }
+        });
     }
 
     /**
